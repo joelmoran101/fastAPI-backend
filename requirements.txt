@@ -1,0 +1,10 @@
+fastapi==0.118.0
+uvicorn[standard]==0.37.0
+pymongo==4.15.2
+python-dotenv==1.1.1
+pydantic==2.11.10
+# Security enhancements
+slowapi==0.1.9  # Better rate limiting
+cryptography==44.0.0  # For secure operations
+bcrypt==4.2.0  # For password hashing if needed
+python-multipart==0.0.16  # For form data security
