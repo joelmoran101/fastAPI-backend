@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, status, Request, Query
+from fastapi import FastAPI, HTTPException, Depends, status, Request, Query, Header, Cookie
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -6,11 +6,12 @@ from contextlib import asynccontextmanager
 from pymongo.errors import DuplicateKeyError, PyMongoError
 from bson import ObjectId
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic import ValidationError, Field
 import logging
 import time
 import json
+import secrets
 
 from database import mongodb, get_database
 from models import (
@@ -77,6 +78,45 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
+# CSRF Token Store (in production, use Redis or database)
+csrf_tokens: Dict[str, float] = {}
+
+# CSRF validation dependency
+async def validate_csrf(
+    request: Request,
+    xsrf_token: Optional[str] = Cookie(None, alias="XSRF-TOKEN"),
+    x_csrf_token: Optional[str] = Header(None, alias="X-CSRF-Token")
+) -> None:
+    """Validate CSRF token using synchronizer token pattern (double-submit)"""
+    # Skip for safe methods
+    if request.method in ["GET", "HEAD", "OPTIONS"]:
+        return
+    
+    # Validate tokens exist and match
+    if not xsrf_token or not x_csrf_token:
+        logger.warning(f"Missing CSRF token from {request.client.host if request.client else 'unknown'}")
+        raise HTTPException(
+            status_code=403,
+            detail="CSRF token missing"
+        )
+    
+    if xsrf_token != x_csrf_token:
+        logger.warning(f"Invalid CSRF token from {request.client.host if request.client else 'unknown'}")
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid CSRF token"
+        )
+    
+    # Optional: Validate token hasn't expired (24 hours)
+    current_time = time.time()
+    token_timestamp = csrf_tokens.get(xsrf_token, 0)
+    if current_time - token_timestamp > 86400:  # 24 hours
+        logger.warning(f"Expired CSRF token from {request.client.host if request.client else 'unknown'}")
+        raise HTTPException(
+            status_code=403,
+            detail="CSRF token expired"
+        )
+
 # Rate Limiting Middleware (simple implementation)
 request_counts = {}
 @app.middleware("http")
@@ -106,7 +146,7 @@ app.add_middleware(
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Only allow React dev server
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type", "X-CSRF-Token"],  # Explicitly allow CSRF header
     expose_headers=["X-Total-Count"]
 )
 
@@ -140,6 +180,30 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         status_code=exc.status_code,
         content={"detail": exc.detail}
     )
+
+# CSRF Token endpoint
+@app.get("/csrf-token")
+async def get_csrf_token() -> JSONResponse:
+    """Generate and return a CSRF token in cookie and response"""
+    token = secrets.token_hex(32)
+    csrf_tokens[token] = time.time()  # Store with timestamp
+    
+    # Clean up expired tokens (older than 24 hours)
+    current_time = time.time()
+    expired = [t for t, timestamp in csrf_tokens.items() if current_time - timestamp > 86400]
+    for t in expired:
+        del csrf_tokens[t]
+    
+    response = JSONResponse({"success": True})
+    response.set_cookie(
+        key="XSRF-TOKEN",
+        value=token,
+        httponly=False,  # Must be readable by JavaScript
+        secure=False,    # Set to True in production with HTTPS
+        samesite="lax",
+        max_age=86400    # 24 hours
+    )
+    return response
 
 # Root endpoint
 @app.get("/")
@@ -227,7 +291,7 @@ async def read_data(item_id: int, collection=Depends(get_database)):
             detail="Database error occurred"
         )
 
-@app.post("/data/", response_model=SuccessResponse)
+@app.post("/data/", response_model=SuccessResponse, dependencies=[Depends(validate_csrf)])
 async def create_data(data_input: SimpleDataCreate, collection=Depends(get_database)):
     """Create a new data item"""
     try:
@@ -260,7 +324,7 @@ async def create_data(data_input: SimpleDataCreate, collection=Depends(get_datab
             detail="Database error occurred"
         )
 
-@app.put("/data/{item_id}", response_model=SuccessResponse)
+@app.put("/data/{item_id}", response_model=SuccessResponse, dependencies=[Depends(validate_csrf)])
 async def update_data(item_id: int, data_input: SimpleDataUpdate, collection=Depends(get_database)):
     """Update an existing data item"""
     try:
@@ -299,7 +363,7 @@ async def update_data(item_id: int, data_input: SimpleDataUpdate, collection=Dep
             detail="Database error occurred"
         )
 
-@app.delete("/data/{item_id}", response_model=SuccessResponse)
+@app.delete("/data/{item_id}", response_model=SuccessResponse, dependencies=[Depends(validate_csrf)])
 async def delete_data(item_id: int, collection=Depends(get_database)):
     """Delete a data item"""
     try:
@@ -361,7 +425,7 @@ async def read_plotly_chart(item_id: int, collection=Depends(get_database)):
             detail="Database error occurred"
         )
 
-@app.post("/plotly/", response_model=SuccessResponse)
+@app.post("/plotly/", response_model=SuccessResponse, dependencies=[Depends(validate_csrf)])
 async def create_plotly_chart(chart_data: PlotlyDataCreate, collection=Depends(get_database)):
     """Create a new Plotly chart"""
     try:
@@ -394,7 +458,7 @@ async def create_plotly_chart(chart_data: PlotlyDataCreate, collection=Depends(g
             detail="Database error occurred"
         )
 
-@app.put("/plotly/{item_id}", response_model=SuccessResponse)
+@app.put("/plotly/{item_id}", response_model=SuccessResponse, dependencies=[Depends(validate_csrf)])
 async def update_plotly_chart(item_id: int, chart_data: PlotlyDataUpdate, collection=Depends(get_database)):
     """Update an existing Plotly chart"""
     try:
@@ -433,7 +497,7 @@ async def update_plotly_chart(item_id: int, chart_data: PlotlyDataUpdate, collec
             detail="Database error occurred"
         )
 
-@app.delete("/plotly/{item_id}", response_model=SuccessResponse)
+@app.delete("/plotly/{item_id}", response_model=SuccessResponse, dependencies=[Depends(validate_csrf)])
 async def delete_plotly_chart(item_id: int, collection=Depends(get_database)):
     """Delete a Plotly chart"""
     try:
