@@ -173,8 +173,7 @@ app.add_middleware(
     allowed_hosts=[
         "localhost",
         "127.0.0.1",
-        "*.vercel.app",  # Allow all Vercel preview URLs
-        "fast-api-backend-two.vercel.app"
+        "*.vercel.app"  # Allow all Vercel URLs (including fast-api-backend.vercel.app)
     ]
 )
 
@@ -221,7 +220,7 @@ async def get_csrf_token() -> JSONResponse:
         key="XSRF-TOKEN",
         value=token,
         httponly=False,  # Must be readable by JavaScript
-        secure=False,    # Set to True in production with HTTPS
+        secure=True,     # HTTPS enabled on Vercel
         samesite="lax",
         max_age=86400    # 24 hours
     )
