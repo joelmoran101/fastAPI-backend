@@ -110,6 +110,12 @@ class MongoDB:
 # Global MongoDB instance
 mongodb = MongoDB()
 
-def get_database() -> Collection:
-    """Dependency to get MongoDB collection"""
+async def get_database() -> Collection:
+    """Dependency to get MongoDB collection - connects if needed"""
+    # Lazy connection for serverless environments
+    if mongodb.client is None or mongodb.collection is None:
+        logger.info("Database not connected, attempting connection...")
+        await mongodb.connect()
+        if mongodb.collection is None:
+            raise RuntimeError("Failed to connect to database")
     return mongodb.get_collection()
