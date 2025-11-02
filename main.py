@@ -232,19 +232,24 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     try:
+        logger.info("Health check: Testing database connection...")
         collection = get_database()
         # Test database connection
         collection.database.client.admin.command('ping')
+        logger.info("Health check: Database connection successful")
         return {
             "status": "healthy",
             "database": "connected",
             "timestamp": datetime.utcnow()
         }
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
+        logger.error(f"Health check failed: {type(e).__name__}: {str(e)}")
+        logger.error(f"MongoDB URL configured: {'Yes' if mongodb.mongodb_url else 'No'}")
+        logger.error(f"Database name: {mongodb.database_name}")
+        logger.error(f"Client connected: {mongodb.client is not None}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database connection failed"
+            detail=f"Database connection failed: {type(e).__name__}"
         )
 
 # Input sanitization helper
