@@ -156,7 +156,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://127.0.0.1:3000"
+        "http://127.0.0.1:3000",
+        "https://load-json-data.vercel.app",
+        "https://load-json-data-git-main-joelmoran101s-projects.vercel.app",
+        "https://load-json-data-joelmoran101s-projects.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -169,7 +172,8 @@ app.add_middleware(
     TrustedHostMiddleware, 
     allowed_hosts=[
         "localhost",
-        "127.0.0.1"
+        "127.0.0.1",
+        "*.onrender.com"
     ]
 )
 
@@ -216,7 +220,7 @@ async def get_csrf_token() -> JSONResponse:
         key="XSRF-TOKEN",
         value=token,
         httponly=False,  # Must be readable by JavaScript
-        secure=False,    # Set to True in production with HTTPS
+        secure=True,     # HTTPS enabled on Render
         samesite="lax",
         max_age=86400    # 24 hours
     )
