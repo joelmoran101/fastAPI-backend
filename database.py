@@ -33,9 +33,16 @@ class MongoDB:
     async def connect(self) -> bool:
         """Establish connection to MongoDB"""
         try:
+            logger.info(f"Attempting MongoDB connection...")
+            logger.info(f"MongoDB URL: {self.mongodb_url[:20]}...")
+            logger.info(f"Database: {self.database_name}")
+            logger.info(f"Collection: {self.collection_name}")
+            logger.info(f"Is Atlas: {self.is_atlas}")
+            
             # Configure connection parameters based on environment
             if self.is_atlas:
                 # Atlas (cloud) optimized settings
+                logger.info("Using Atlas (cloud) connection settings")
                 self.client = MongoClient(
                     self.mongodb_url,
                     serverSelectionTimeoutMS=10000,  # 10 second timeout for cloud
@@ -65,10 +72,15 @@ class MongoDB:
             return True
             
         except (ConnectionFailure, ServerSelectionTimeoutError) as e:
-            logger.error(f"Failed to connect to MongoDB: {e}")
+            logger.error(f"❌ Failed to connect to MongoDB: {type(e).__name__}")
+            logger.error(f"Error details: {str(e)}")
+            logger.error(f"Check: 1) MongoDB Atlas IP whitelist, 2) Credentials, 3) Network access")
             return False
         except Exception as e:
-            logger.error(f"Unexpected error connecting to MongoDB: {e}")
+            logger.error(f"❌ Unexpected error connecting to MongoDB: {type(e).__name__}")
+            logger.error(f"Error details: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return False
     
     async def disconnect(self):
