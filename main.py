@@ -43,19 +43,30 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
+    logger.info("="*50)
     logger.info("Starting FastAPI application...")
-    connected = await mongodb.connect()
-    if connected:
-        await mongodb.create_indexes()
-        logger.info("Database connected and indexes created")
-    else:
-        logger.error("Failed to connect to database")
+    logger.info("="*50)
+    
+    try:
+        connected = await mongodb.connect()
+        if connected:
+            await mongodb.create_indexes()
+            logger.info("✅ Database connected and indexes created")
+        else:
+            logger.error("❌ Failed to connect to database during startup")
+    except Exception as e:
+        logger.error(f"❌ Error during startup: {type(e).__name__}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
     
     yield
     
     # Shutdown
-    await mongodb.disconnect()
-    logger.info("Application shutdown complete")
+    try:
+        await mongodb.disconnect()
+        logger.info("Application shutdown complete")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {e}")
 
 app = FastAPI(
     title="FastAPI Plotly Backend",
