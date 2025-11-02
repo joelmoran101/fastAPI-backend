@@ -151,16 +151,14 @@ async def rate_limit_middleware(request: Request, call_next):
     response = await call_next(request)
     return response
 
-# CORS Configuration (restrictive)
+# CORS Configuration (restrictive but allows all Vercel preview URLs)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://load-json-data.vercel.app",
-        "https://load-json-data-git-main-joelmoran101s-projects.vercel.app",
-        "https://load-json-data-joelmoran101s-projects.vercel.app"
+        "http://127.0.0.1:3000"
     ],
+    allow_origin_regex=r"https://load-json-data.*\.vercel\.app",  # Allow all load-json-data Vercel deployments
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-CSRF-Token", "Authorization"],
