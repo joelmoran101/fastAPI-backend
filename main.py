@@ -156,10 +156,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://load-json-data.vercel.app",
-        "https://load-json-data-git-main-joelmoran101s-projects.vercel.app",
-        "https://load-json-data-joelmoran101s-projects.vercel.app"
+        "http://127.0.0.1:3000"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -172,9 +169,7 @@ app.add_middleware(
     TrustedHostMiddleware, 
     allowed_hosts=[
         "localhost",
-        "127.0.0.1",
-        "*.vercel.app",  # Allow all Vercel preview URLs
-        "fast-api-backend-two.vercel.app"
+        "127.0.0.1"
     ]
 )
 
