@@ -143,17 +143,28 @@ async def rate_limit_middleware(request: Request, call_next):
 # CORS Configuration (restrictive)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Only allow React dev server
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://load-json-data.vercel.app",
+        "https://load-json-data-git-main-joelmoran101s-projects.vercel.app",
+        "https://load-json-data-joelmoran101s-projects.vercel.app"
+    ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Content-Type", "X-CSRF-Token"],  # Explicitly allow CSRF header
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-CSRF-Token", "Authorization"],
     expose_headers=["X-Total-Count"]
 )
 
 # Trusted Host Middleware
 app.add_middleware(
     TrustedHostMiddleware, 
-    allowed_hosts=["localhost", "127.0.0.1", "*.yourdomain.com"]  # Add your production domain
+    allowed_hosts=[
+        "localhost",
+        "127.0.0.1",
+        "*.vercel.app",  # Allow all Vercel preview URLs
+        "fast-api-backend-two.vercel.app"
+    ]
 )
 
 # Global exception handlers
